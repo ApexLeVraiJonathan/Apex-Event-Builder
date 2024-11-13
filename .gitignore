@@ -1,0 +1,64 @@
+# Node.js specific
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+.env
+.env.local
+*.local.env
+*.env.test
+*.env.production
+
+# Logs
+logs
+*.log
+logs/*.log
+pids
+*.pid
+*.pid.lock
+
+# Editor & IDE-specific files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# macOS specific
+Thumbs.db
+.DS_Store
+
+# Azure Web Apps specific
+azure-pipelines.yml
+*.publish*
+.vs/
+
+# Optional for ES modules
+*.mjs
+
+# Temporary files
+temp/
+tmp/
+.cache/
+
+# Coverage reports (if you're using testing libraries)
+coverage/
+nyc_output/
+
+# Debug tools
+*.log
+*.tlog
+node_modules_debug/
+
+# Miscellaneous
+*.bak
+*.orig
+*.rej
+
+# Dependency directories
+node_modules/
+
+# Optional: OS-specific (Windows, Linux, Mac)
+*.~undo
