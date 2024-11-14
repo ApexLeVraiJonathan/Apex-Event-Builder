@@ -1,11 +1,10 @@
 import { CosmosClient } from '@azure/cosmos';
-import dotenv from 'dotenv';
+import {
+  COSMOS_DB_URI,
+  COSMOS_DB_KEY,
+  COSMOS_DB_DATABASE,
+} from '../config/env.js';
 import logger from '../utils/logger.js';
-
-// Load environment variables from .env file
-dotenv.config();
-
-const { COSMOS_DB_URI, COSMOS_DB_KEY, COSMOS_DB_DATABASE } = process.env;
 
 const client = new CosmosClient({
   endpoint: COSMOS_DB_URI,

@@ -1,17 +1,20 @@
 import express from 'express';
-import dotenv from 'dotenv';
+import { PORT } from './config/env.js';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimiter from './middlewares/rateLimiter.js';
 import errorHandler from './middlewares/errorHandler.js';
 import logger from './utils/logger.js';
 import setupSwagger from './config/swagger.js';
-import tournamentProviderRoutes from './routes/tournamentProviderRoutes.js';
 
-dotenv.config();
+// Import Routes
+import tournamentProviderRoutes from './routes/tournamentProviderRoutes.js';
+import tournamentRoutes from './routes/tournamentRoutes.js';
+import tournamentCodeRoutes from './routes/tournamentCodeRoutes.js';
+import gameCompletionRoutes from './routes/gameCompletionRoutes.js';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = PORT || 3000;
 
 app.use(express.json());
 app.use(helmet());
@@ -21,6 +24,9 @@ setupSwagger(app);
 
 // Register routes
 app.use('/api/tournaments', tournamentProviderRoutes);
+app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/tournaments', tournamentCodeRoutes);
+app.use('/api/tournaments', gameCompletionRoutes);
 
 app.use(errorHandler);
 

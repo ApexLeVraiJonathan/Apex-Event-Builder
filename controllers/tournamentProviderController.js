@@ -1,23 +1,26 @@
-import { saveProviderId } from '../services/tournamentProviderService.js';
-import dotenv from 'dotenv';
-import axios from 'axios';
+import {
+  createProvider,
+  saveProviderId,
+} from '../services/tournamentProviderService.js';
 import logger from '../utils/logger.js';
+import dotenv from 'dotenv';
 
-// Load environment variables from .env file
 dotenv.config();
 
-export const createTournamentProvider = async (req, res) => {
-  const { region, callbackUrl } = req.body;
+export const handleCreateProvider = async (req, res) => {
+  const { region, url } = req.body;
+
+  if (!region || !url) {
+    logger.warn('Missing region or url in the request body');
+    return res.status(400).json({ error: 'Region and url are required' });
+  }
 
   try {
-    const response = await axios.post(
-      `https://americas.api.riotgames.com/lol/tournament/v5/providers`,
-      { region, url: callbackUrl },
-      { headers: { 'X-Riot-Token': process.env.RIOT_API_KEY } },
-    );
+    // Create a tournament provider using the service
+    const providerId = await createProvider(region, url);
 
-    const providerId = response.data;
-    await saveProviderId(providerId, region, callbackUrl);
+    // Save the provider ID to Cosmos DB
+    await saveProviderId(providerId, region, url);
 
     res.status(201).json({ providerId });
   } catch (error) {
