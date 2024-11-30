@@ -12,6 +12,7 @@ import tournamentProviderRoutes from './routes/tournamentProviderRoutes.js';
 import tournamentRoutes from './routes/tournamentRoutes.js';
 import tournamentCodeRoutes from './routes/tournamentCodeRoutes.js';
 import gameCompletionRoutes from './routes/gameCompletionRoutes.js';
+import teamWebhookRoutes from './routes/teamWebhookRoutes.js';
 
 const app = express();
 const port = PORT || 3000;
@@ -27,6 +28,7 @@ app.use('/api/tournaments', tournamentProviderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/tournaments', tournamentCodeRoutes);
 app.use('/api/tournaments', gameCompletionRoutes);
+app.use('/api/teams', teamWebhookRoutes);
 
 app.use(errorHandler);
 

@@ -8,13 +8,13 @@ const router = express.Router();
  * /api/tournaments/create-codes:
  *   post:
  *     summary: Generate tournament codes
- *     description: Creates tournament codes for a specific tournament
+ *     description: Creates tournament codes for a specific tournament and optionally sends them to Discord
  *     parameters:
  *       - in: query
  *         name: tournamentId
  *         required: true
  *         schema:
- *           type: number
+ *           type: string
  *         description: The ID of the tournament
  *       - in: query
  *         name: count
@@ -22,6 +22,12 @@ const router = express.Router();
  *         schema:
  *           type: number
  *         description: The number of codes to generate
+ *       - in: query
+ *         name: sendToDiscord
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *         description: Whether to send codes to Discord channels
  *     requestBody:
  *       required: true
  *       content:
@@ -37,7 +43,7 @@ const router = express.Router();
  *                 example: "SUMMONERS_RIFT"
  *               metadata:
  *                 type: string
- *                 example: "My Tournament Code"
+ *                 example: "Tournament Metadata"
  *               pickType:
  *                 type: string
  *                 example: "TOURNAMENT_DRAFT"
@@ -47,6 +53,11 @@ const router = express.Router();
  *               teamSize:
  *                 type: number
  *                 example: 5
+ *               teams:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Team A", "Team B"]
  *     responses:
  *       201:
  *         description: Tournament codes created successfully
