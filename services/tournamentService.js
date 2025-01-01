@@ -41,3 +41,18 @@ export const saveTournamentId = async (tournamentId, providerId, name) => {
     throw err;
   }
 };
+
+export const listTournaments = async () => {
+  try {
+    const querySpec = {
+      query: 'SELECT c.id, c.name FROM c',
+    };
+
+    const { resources } = await container.items.query(querySpec).fetchAll();
+    logger.info(`Fetched ${resources.length} tournaments from the database`);
+    return resources;
+  } catch (error) {
+    logger.error(`Error fetching tournaments: ${error.message}`);
+    throw error;
+  }
+};

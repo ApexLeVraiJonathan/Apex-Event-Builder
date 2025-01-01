@@ -1,5 +1,8 @@
 import express from 'express';
-import { handleCreateTournament } from '../controllers/tournamentController.js';
+import {
+  handleCreateTournament,
+  handleListTournaments,
+} from '../controllers/tournamentController.js';
 
 const router = express.Router();
 
@@ -42,5 +45,16 @@ const router = express.Router();
  *         description: Internal server error
  */
 router.post('/create-tournament', handleCreateTournament);
+/**
+ * @swagger
+ * /api/tournaments/list-tournaments:
+ *   get:
+ *     summary: List all tournaments
+ *     description: Retrieves all tournaments from the database
+ *     responses:
+ *       200:
+ *         description: A list of tournaments
+ */
+router.get('/list-tournaments', handleListTournaments);
 
 export default router;
