@@ -1,6 +1,7 @@
 import {
   createProvider,
   saveProviderId,
+  listProviders,
 } from '../services/tournamentProviderService.js';
 import logger from '../utils/logger.js';
 import dotenv from 'dotenv';
@@ -26,5 +27,15 @@ export const handleCreateProvider = async (req, res) => {
   } catch (error) {
     logger.error(`Failed to create tournament provider: ${error.message}`);
     res.status(500).json({ error: 'Failed to create tournament provider' });
+  }
+};
+
+export const handleListProviders = async (req, res) => {
+  try {
+    const providers = await listProviders();
+    res.status(200).json(providers);
+  } catch (error) {
+    logger.error(`Failed to fetch providers: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch providers' });
   }
 };

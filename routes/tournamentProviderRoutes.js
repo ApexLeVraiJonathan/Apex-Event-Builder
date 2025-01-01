@@ -1,5 +1,8 @@
 import express from 'express';
-import { handleCreateProvider } from '../controllers/tournamentProviderController.js';
+import {
+  handleCreateProvider,
+  handleListProviders,
+} from '../controllers/tournamentProviderController.js';
 
 const router = express.Router();
 
@@ -47,5 +50,16 @@ const router = express.Router();
  *         description: Gateway timeout
  */
 router.post('/create-provider', handleCreateProvider);
+/**
+ * @swagger
+ * /api/tournaments/list-providers:
+ *   get:
+ *     summary: List all tournament providers
+ *     description: Retrieves all tournament providers from the database
+ *     responses:
+ *       200:
+ *         description: A list of tournament providers
+ */
+router.get('/list-providers', handleListProviders);
 
 export default router;

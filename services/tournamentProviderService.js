@@ -67,3 +67,19 @@ export const saveProviderId = async (providerId, region, url) => {
     throw err;
   }
 };
+
+// Function to list all providers from Cosmos DB
+export const listProviders = async () => {
+  try {
+    const querySpec = {
+      query: 'SELECT c.id, c.region, c.url FROM c',
+    };
+
+    const { resources } = await container.items.query(querySpec).fetchAll();
+    logger.info(`Fetched ${resources.length} providers from the database`);
+    return resources;
+  } catch (error) {
+    logger.error(`Error fetching providers: ${error.message}`);
+    throw error;
+  }
+};
