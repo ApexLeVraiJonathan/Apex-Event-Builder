@@ -1,64 +1,105 @@
-import { getContainer } from '../config/cosmos.js';
 import logger from '../utils/logger.js';
+import { teamWebhookService } from '../services/teamWebhookService.js';
+import { ApiResponse } from '../utils/apiResponse.js';
 
-const container = getContainer('teamWebhooks');
-
-// Add a new team webhook entry
-export const addTeamWebhook = async (req, res, next) => {
-  const { tournamentId, tournamentName, teamName, webhookUrl } = req.body;
-
-  if (!tournamentId || !tournamentName || !teamName || !webhookUrl) {
-    logger.warn(
-      'Missing required fields: tournamentId, tournamentName, teamName, or webhookUrl',
-    );
-    return res.status(400).json({
-      error:
-        'tournamentId, tournamentName, teamName, and webhookUrl are required',
-    });
-  }
+export const handleRegisterWebhook = async (req, res, next) => {
+  const { correlationId } = req;
+  const { tournamentId, teamId } = req.params;
+  const webhookData = req.sanitizedBody;
 
   try {
-    const item = {
-      id: `${tournamentId}_${teamName.toLowerCase()}`, // Unique ID combining tournamentId and teamName
+    logger.info({
+      correlationId,
+      message: 'Registering team webhook',
       tournamentId,
-      tournamentName,
-      teamName,
-      webhookUrl,
-      createdAt: new Date().toISOString(),
-    };
+      teamId,
+    });
 
-    const { resource } = await container.items.create(item);
-    logger.info(
-      `Webhook added for team: ${teamName} in tournament: ${tournamentName}`,
+    const webhook = await teamWebhookService.registerWebhook(
+      tournamentId,
+      teamId,
+      webhookData,
     );
-    res.status(201).json(resource);
+
+    logger.info({
+      correlationId,
+      message: 'Team webhook registered successfully',
+      webhookId: webhook.id,
+    });
+
+    return ApiResponse.created(res, { webhook });
   } catch (error) {
-    logger.error(`Error adding team webhook: ${error.message}`);
+    logger.error({
+      correlationId,
+      message: 'Failed to register team webhook',
+      error: error.message,
+    });
     next(error);
   }
 };
 
-// Retrieve a webhook for a specific team and tournament
-export const getTeamWebhook = async (tournamentId, teamName) => {
+export const handleGetTeamWebhooks = async (req, res, next) => {
+  const { correlationId } = req;
+  const { tournamentId, teamId } = req.params;
+
   try {
-    // Construct the ID as stored in the database
-    const id = `${tournamentId}_${teamName.toLowerCase()}`;
-    logger.info(`Fetching webhook with ID: ${id}`);
+    logger.info({
+      correlationId,
+      message: 'Fetching team webhooks',
+      tournamentId,
+      teamId,
+    });
 
-    // Include the partition key (id) in the read operation
-    const { resource } = await container.item(id, id).read();
-
-    if (!resource) {
-      logger.warn(`No webhook found for ID: ${id}`);
-    } else {
-      logger.info(`Found webhook for ID: ${id}`);
-    }
-
-    return resource;
-  } catch (error) {
-    logger.error(
-      `Error fetching webhook for team ${teamName} in tournament ${tournamentId}: ${error.message}`,
+    const webhooks = await teamWebhookService.getTeamWebhooks(
+      tournamentId,
+      teamId,
     );
-    return null; // Return null if not found
+
+    logger.info({
+      correlationId,
+      message: 'Team webhooks fetched successfully',
+      count: webhooks.length,
+    });
+
+    return ApiResponse.success(res, { webhooks });
+  } catch (error) {
+    logger.error({
+      correlationId,
+      message: 'Failed to fetch team webhooks',
+      error: error.message,
+    });
+    next(error);
+  }
+};
+
+export const handleDeleteWebhook = async (req, res, next) => {
+  const { correlationId } = req;
+  const { tournamentId, teamId, webhookId } = req.params;
+
+  try {
+    logger.info({
+      correlationId,
+      message: 'Deleting team webhook',
+      tournamentId,
+      teamId,
+      webhookId,
+    });
+
+    await teamWebhookService.deleteWebhook(tournamentId, teamId, webhookId);
+
+    logger.info({
+      correlationId,
+      message: 'Team webhook deleted successfully',
+      webhookId,
+    });
+
+    return ApiResponse.success(res, null, 'Webhook deleted successfully');
+  } catch (error) {
+    logger.error({
+      correlationId,
+      message: 'Failed to delete team webhook',
+      error: error.message,
+    });
+    next(error);
   }
 };

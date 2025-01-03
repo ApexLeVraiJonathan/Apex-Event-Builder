@@ -1,71 +1,180 @@
 import express from 'express';
-import { handleCreateTournamentCodes } from '../controllers/tournamentCodeController.js';
+import {
+  handleCreateTournamentCode,
+  handleGetTournamentCodes,
+  handleInvalidateCode,
+} from '../controllers/tournamentCodeController.js';
+import { validateRequest } from '../middlewares/validateRequest.js';
+import { createTournamentCodeSchema } from '../schemas/tournamentCode.schema.js';
+import { defaultLimiter } from '../middlewares/rateLimiter.js';
+import { cacheMiddleware } from '../middlewares/cache.js';
 
 const router = express.Router();
 
 /**
  * @swagger
- * /api/tournaments/create-codes:
+ * /tournaments/{tournamentId}/codes:
  *   post:
- *     summary: Generate tournament codes
- *     description: Creates tournament codes for a specific tournament and optionally sends them to Discord
+ *     summary: Create a new tournament code
+ *     tags: [Tournament Codes]
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: tournamentId
  *         required: true
  *         schema:
  *           type: string
- *         description: The ID of the tournament
- *       - in: query
- *         name: count
- *         required: true
- *         schema:
- *           type: number
- *         description: The number of codes to generate
- *       - in: query
- *         name: sendToDiscord
- *         required: false
- *         schema:
- *           type: boolean
- *         description: Whether to send codes to Discord channels
+ *         description: ID of the tournament
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - teamSize
+ *               - mapType
+ *               - metadata
  *             properties:
- *               enoughPlayers:
- *                 type: boolean
- *                 example: false
+ *               teamSize:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 3
  *               mapType:
  *                 type: string
  *                 example: "SUMMONERS_RIFT"
  *               metadata:
  *                 type: string
- *                 example: "Tournament Metadata"
- *               pickType:
- *                 type: string
- *                 example: "TOURNAMENT_DRAFT"
- *               spectatorType:
- *                 type: string
- *                 example: "ALL"
- *               teamSize:
- *                 type: number
- *                 example: 5
- *               teams:
+ *                 description: Additional data for the tournament code
+ *               allowedSummonerIds:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["Team A", "Team B"]
+ *                 description: List of summoner IDs allowed to use this code
  *     responses:
  *       201:
- *         description: Tournament codes created successfully
+ *         description: Tournament code created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                     id:
+ *                       type: string
  *       400:
- *         description: Bad request
- *       500:
- *         description: Internal server error
+ *         $ref: '#/components/responses/Error'
  */
-router.post('/create-codes', handleCreateTournamentCodes);
+router.post(
+  '/:tournamentId/codes',
+  defaultLimiter,
+  validateRequest(createTournamentCodeSchema),
+  handleCreateTournamentCode,
+);
+
+/**
+ * @swagger
+ * /tournaments/{tournamentId}/codes:
+ *   get:
+ *     summary: Get all tournament codes
+ *     tags: [Tournament Codes]
+ *     parameters:
+ *       - in: path
+ *         name: tournamentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the tournament
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, used, invalid]
+ *         description: Filter codes by status
+ *     responses:
+ *       200:
+ *         description: List of tournament codes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       code:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       teamSize:
+ *                         type: integer
+ *                       mapType:
+ *                         type: string
+ *                       metadata:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ */
+router.get(
+  '/:tournamentId/codes',
+  defaultLimiter,
+  cacheMiddleware('codes'),
+  handleGetTournamentCodes,
+);
+
+/**
+ * @swagger
+ * /tournaments/{tournamentId}/codes/{codeId}/invalidate:
+ *   put:
+ *     summary: Invalidate a tournament code
+ *     tags: [Tournament Codes]
+ *     parameters:
+ *       - in: path
+ *         name: tournamentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the tournament
+ *       - in: path
+ *         name: codeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the tournament code
+ *     responses:
+ *       200:
+ *         description: Tournament code invalidated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       404:
+ *         $ref: '#/components/responses/Error'
+ */
+router.put(
+  '/:tournamentId/codes/:codeId/invalidate',
+  defaultLimiter,
+  handleInvalidateCode,
+);
 
 export default router;

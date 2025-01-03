@@ -1,37 +1,67 @@
 import express from 'express';
-import { PORT } from './config/env.js';
-import helmet from 'helmet';
 import cors from 'cors';
-import rateLimiter from './middlewares/rateLimiter.js';
-import errorHandler from './middlewares/errorHandler.js';
-import logger from './utils/logger.js';
-import setupSwagger from './config/swagger.js';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.js';
+import { correlationId } from './middlewares/correlationId.js';
+import { requestLogger } from './middlewares/requestLogger.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { securityMiddleware } from './middlewares/security.js';
+import { sanitizeRequest } from './middlewares/sanitizer.js';
+import { IS_PRODUCTION } from './config/env.js';
+import { initializeDatabase } from './config/cosmos.js';
+import { tournamentService } from './services/tournamentService.js';
 
-// Import Routes
+// Import routes
 import tournamentProviderRoutes from './routes/tournamentProviderRoutes.js';
 import tournamentRoutes from './routes/tournamentRoutes.js';
 import tournamentCodeRoutes from './routes/tournamentCodeRoutes.js';
-import gameCompletionRoutes from './routes/gameCompletionRoutes.js';
+import gameCallbackRoutes from './routes/gameCallbackRoutes.js';
 import teamWebhookRoutes from './routes/teamWebhookRoutes.js';
+import healthCheckRoutes from './routes/healthCheckRoutes.js';
 
 const app = express();
-const port = PORT || 3000;
 
-app.use(express.json());
-app.use(helmet());
+// Initialize database and services
+let initialized = false;
+const initialize = async () => {
+  if (!initialized) {
+    await initializeDatabase();
+    await tournamentService.init();
+    initialized = true;
+  }
+};
+
+// Setup middleware
 app.use(cors());
-app.use(rateLimiter);
-setupSwagger(app);
+app.use(express.json());
+app.use(correlationId);
+app.use(requestLogger);
+app.use(securityMiddleware);
+app.use(sanitizeRequest);
 
-// Register routes
-app.use('/api/tournaments', tournamentProviderRoutes);
+// Initialize before setting up routes
+await initialize();
+
+// Setup routes
+app.use('/api/tournament-providers', tournamentProviderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
-app.use('/api/tournaments', tournamentCodeRoutes);
-app.use('/api/tournaments', gameCompletionRoutes);
-app.use('/api/teams', teamWebhookRoutes);
+app.use('/api/tournament-codes', tournamentCodeRoutes);
+app.use('/api/game-callbacks', gameCallbackRoutes);
+app.use('/api/team-webhooks', teamWebhookRoutes);
+app.use('/api/health', healthCheckRoutes);
 
+// Swagger documentation
+if (!IS_PRODUCTION) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
+
+// Error handling
 app.use(errorHandler);
 
-app.listen(port, () => {
-  logger.info(`Server is running on http://localhost:${port}`);
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
+
+export default app;

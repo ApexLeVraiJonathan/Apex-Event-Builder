@@ -1,37 +1,57 @@
-import {
-  createTournament,
-  saveTournamentId,
-  listTournaments,
-} from '../services/tournamentService.js';
-import logger from '../utils/logger.js';
+import { tournamentService } from '../services/tournamentService.js';
+import { ApiResponse } from '../utils/apiResponse.js';
 
-export const handleCreateTournament = async (req, res) => {
-  const { providerId, name } = req.body;
-
-  if (!providerId || !name) {
-    logger.warn('Missing providerId or name in request body');
-    return res
-      .status(400)
-      .json({ error: 'Provider ID and tournament name are required' });
-  }
-
+export const handleCreateTournament = async (req, res, next) => {
   try {
-    const tournamentId = await createTournament(providerId, name);
-    await saveTournamentId(tournamentId, providerId, name);
+    const { providerId, name, ...tournamentData } = req.body;
 
-    res.status(201).json({ tournamentId });
+    // First create tournament in Riot's system
+    const riotTournamentId = await tournamentService.createRiotTournament(
+      providerId,
+      name,
+    );
+
+    // Then save in our database
+    const tournament = await tournamentService.saveTournament({
+      id: riotTournamentId.toString(),
+      providerId: providerId.toString(),
+      name,
+      ...tournamentData,
+    });
+
+    return ApiResponse.success(
+      res,
+      tournament,
+      'Tournament created successfully',
+      201,
+    );
   } catch (error) {
-    logger.error(`Failed to create tournament: ${error.message}`);
-    res.status(500).json({ error: 'Failed to create tournament' });
+    next(error);
   }
 };
 
-export const handleListTournaments = async (req, res) => {
+export const handleGetTournaments = async (req, res, next) => {
   try {
-    const tournaments = await listTournaments();
-    res.status(200).json(tournaments);
+    const tournaments = await tournamentService.listTournaments();
+    return ApiResponse.success(
+      res,
+      tournaments,
+      'Tournaments retrieved successfully',
+    );
   } catch (error) {
-    logger.error(`Failed to fetch tournaments: ${error.message}`);
-    res.status(500).json({ error: 'Failed to fetch tournaments' });
+    next(error);
+  }
+};
+
+export const handleGetTournament = async (req, res, next) => {
+  try {
+    const tournament = await tournamentService.getTournament(req.params.id);
+    return ApiResponse.success(
+      res,
+      tournament,
+      'Tournament retrieved successfully',
+    );
+  } catch (error) {
+    next(error);
   }
 };

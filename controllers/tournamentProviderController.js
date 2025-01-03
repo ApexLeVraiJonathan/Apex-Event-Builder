@@ -1,41 +1,50 @@
-import {
-  createProvider,
-  saveProviderId,
-  listProviders,
-} from '../services/tournamentProviderService.js';
-import logger from '../utils/logger.js';
-import dotenv from 'dotenv';
+import { tournamentProviderService } from '../services/tournamentProviderService.js';
+import { ApiResponse } from '../utils/apiResponse.js';
 
-dotenv.config();
-
-export const handleCreateProvider = async (req, res) => {
-  const { region, url } = req.body;
-
-  if (!region || !url) {
-    logger.warn('Missing region or url in the request body');
-    return res.status(400).json({ error: 'Region and url are required' });
-  }
-
+export const handleCreateProvider = async (req, res, next) => {
   try {
-    // Create a tournament provider using the service
-    const providerId = await createProvider(region, url);
-
-    // Save the provider ID to Cosmos DB
-    await saveProviderId(providerId, region, url);
-
-    res.status(201).json({ providerId });
+    const provider = await tournamentProviderService.createProvider(req.body);
+    return ApiResponse.success(
+      res,
+      provider,
+      'Tournament provider created successfully',
+      201,
+    );
   } catch (error) {
-    logger.error(`Failed to create tournament provider: ${error.message}`);
-    res.status(500).json({ error: 'Failed to create tournament provider' });
+    if (error.status === 409) {
+      // Handle duplicate provider case
+      return ApiResponse.error(res, error.message, 409);
+    }
+    // Handle other errors through the error middleware
+    next(error);
   }
 };
 
-export const handleListProviders = async (req, res) => {
+export const handleGetProvider = async (req, res, next) => {
   try {
-    const providers = await listProviders();
-    res.status(200).json(providers);
+    const provider = await tournamentProviderService.getProvider(req.params.id);
+    return ApiResponse.success(
+      res,
+      provider,
+      'Tournament provider retrieved successfully',
+    );
   } catch (error) {
-    logger.error(`Failed to fetch providers: ${error.message}`);
-    res.status(500).json({ error: 'Failed to fetch providers' });
+    if (error.status === 404) {
+      return ApiResponse.error(res, 'Tournament provider not found', 404);
+    }
+    next(error);
+  }
+};
+
+export const handleListProviders = async (req, res, next) => {
+  try {
+    const providers = await tournamentProviderService.listProviders(req.query);
+    return ApiResponse.success(
+      res,
+      providers,
+      'Tournament providers retrieved successfully',
+    );
+  } catch (error) {
+    next(error);
   }
 };

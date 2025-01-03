@@ -1,60 +1,142 @@
 import express from 'express';
 import {
   handleCreateTournament,
-  handleListTournaments,
+  handleGetTournaments,
+  handleGetTournament,
 } from '../controllers/tournamentController.js';
+import { validateRequest } from '../middlewares/validateRequest.js';
+import { tournamentSchema } from '../schemas/tournament.schema.js';
+import { defaultLimiter } from '../middlewares/rateLimiter.js';
+import { cacheMiddleware } from '../middlewares/cache.js';
 
 const router = express.Router();
 
 /**
  * @swagger
- * /api/tournaments/create-tournament:
+ * /tournaments:
  *   post:
  *     summary: Create a new tournament
- *     description: Creates a new tournament associated with a tournament provider
+ *     tags: [Tournaments]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             title: TournamentRegistrationParametersV5
+ *             required:
+ *               - providerId
  *             properties:
  *               providerId:
- *                 type: number
- *                 description: ID of the tournament provider
- *                 example: 14038
+ *                 type: integer
+ *                 description: The provider ID to specify the regional registered provider data to associate this tournament
+ *                 example: 123456
  *               name:
  *                 type: string
- *                 description: Name of the tournament
- *                 example: "My League Tournament"
+ *                 description: The optional name of the tournament
+ *                 example: "Summer Championship"
  *     responses:
- *       201:
+ *       200:
  *         description: Tournament created successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 tournamentId:
- *                   type: string
- *                   description: The ID of the created tournament
- *                   example: "123456"
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: integer
+ *                   description: The tournament ID
+ *                   example: 123456
  *       400:
- *         description: Bad request - missing providerId or name
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Data not found
+ *       405:
+ *         description: Method not allowed
+ *       415:
+ *         description: Unsupported media type
+ *       429:
+ *         description: Rate limit exceeded
  *       500:
  *         description: Internal server error
+ *       502:
+ *         description: Bad gateway
+ *       503:
+ *         description: Service unavailable
+ *       504:
+ *         description: Gateway timeout
  */
-router.post('/create-tournament', handleCreateTournament);
+router.post(
+  '/',
+  defaultLimiter,
+  validateRequest(tournamentSchema),
+  handleCreateTournament,
+);
+
 /**
  * @swagger
- * /api/tournaments/list-tournaments:
+ * /tournaments:
  *   get:
- *     summary: List all tournaments
- *     description: Retrieves all tournaments from the database
+ *     summary: Get all tournaments
+ *     tags: [Tournaments]
+ *     parameters:
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *         description: Filter by provider ID
  *     responses:
  *       200:
- *         description: A list of tournaments
+ *         description: List of tournaments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Tournament'
  */
-router.get('/list-tournaments', handleListTournaments);
+router.get(
+  '/',
+  defaultLimiter,
+  cacheMiddleware('tournaments'),
+  handleGetTournaments,
+);
+
+/**
+ * @swagger
+ * /tournaments/{id}:
+ *   get:
+ *     summary: Get tournament by ID
+ *     tags: [Tournaments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tournament details
+ *       404:
+ *         $ref: '#/components/responses/Error'
+ */
+router.get(
+  '/:id',
+  defaultLimiter,
+  cacheMiddleware('tournament'),
+  handleGetTournament,
+);
 
 export default router;

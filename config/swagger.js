@@ -1,22 +1,23 @@
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsDoc from 'swagger-jsdoc';
+import swaggerJsdoc from 'swagger-jsdoc';
 
-const swaggerOptions = {
+const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Event Builder API',
+      title: 'Tournament API',
       version: '1.0.0',
-      description: 'API documentation for the Event Builder backend',
+      description: 'API for managing tournaments and game events',
     },
+    servers: [
+      {
+        url: '/api',
+        description: 'API Base URL',
+      },
+    ],
   },
-  apis: ['./routes/*.js'], // Path to your API route files
+  apis: [
+    './routes/*.js', // Make sure this path is correct
+  ],
 };
 
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
-
-const setupSwagger = (app) => {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-};
-
-export default setupSwagger;
+export const swaggerSpec = swaggerJsdoc(options);

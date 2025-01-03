@@ -1,22 +1,37 @@
 import logger from '../utils/logger.js';
+import { AppError } from '../utils/errors.js';
+import { ApiResponse } from '../utils/apiResponse.js';
 
-const errorHandler = (err, req, res, _) => {
-  // Check if res is defined
-  if (!res || typeof res.status !== 'function') {
-    logger.error('Response object is not defined correctly');
-    return;
+export const errorHandler = (err, req, res) => {
+  const correlationId = req.correlationId;
+
+  // Log error with correlation ID
+  logger.error({
+    correlationId,
+    message: 'Error occurred',
+    error: err.message,
+    stack: err.stack,
+  });
+
+  // Handle specific error types
+  if (err instanceof AppError) {
+    return ApiResponse.error(res, err.message, err.statusCode);
   }
 
-  // Log the error details
-  logger.error(
-    `${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
+  // Handle validation errors
+  if (err.name === 'ValidationError') {
+    return ApiResponse.error(res, err.message, 400);
+  }
+
+  // Handle Cosmos DB errors
+  if (err.code === 404) {
+    return ApiResponse.error(res, 'Resource not found', 404);
+  }
+
+  // Default error response
+  return ApiResponse.error(
+    res,
+    'An unexpected error occurred',
+    err.statusCode || 500,
   );
-
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-  });
 };
-
-export default errorHandler;
