@@ -1,7 +1,6 @@
 import express from 'express';
+import { healthCheckService } from '../services/healthCheckService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
-import { client as cosmosClient } from '../config/cosmos.js';
-import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -22,26 +21,34 @@ const router = express.Router();
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Service is healthy
  *                 data:
  *                   type: object
  *                   properties:
  *                     status:
  *                       type: string
  *                       example: OK
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2024-01-01T00:00:00.000Z
  */
 router.get('/', async (req, res) => {
-  return ApiResponse.success(res, { status: 'OK' }, 'Service is healthy');
+  const status = await healthCheckService.getBasicStatus();
+  return ApiResponse.success(res, status, 'Service is healthy');
 });
 
 /**
  * @swagger
  * /health/detailed:
  *   get:
- *     summary: Detailed health check
+ *     summary: Detailed health check including database status
  *     tags: [Health]
  *     responses:
  *       200:
- *         description: Detailed health status
+ *         description: All systems operational
  *         content:
  *           application/json:
  *             schema:
@@ -50,54 +57,39 @@ router.get('/', async (req, res) => {
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: All systems operational
  *                 data:
  *                   type: object
  *                   properties:
  *                     status:
  *                       type: string
- *                       example: OK
+ *                       enum: [healthy, degraded]
+ *                       example: healthy
  *                     database:
  *                       type: string
- *                       example: Connected
+ *                       enum: [connected, disconnected]
+ *                       example: connected
  *                     timestamp:
  *                       type: string
  *                       format: date-time
+ *                       example: 2024-01-01T00:00:00.000Z
+ *                     responseTime:
+ *                       type: number
+ *                       description: Response time in milliseconds
+ *                       example: 42
  *       503:
- *         description: Service partially degraded
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 data:
- *                   type: object
- *                   properties:
- *                     database:
- *                       type: string
- *                       example: Disconnected
+ *         $ref: '#/components/responses/ServiceUnavailable'
  */
 router.get('/detailed', async (req, res) => {
-  try {
-    await cosmosClient.getDatabaseAccount();
+  const status = await healthCheckService.getDetailedStatus();
 
-    return ApiResponse.success(
-      res,
-      {
-        status: 'OK',
-        database: 'Connected',
-        timestamp: new Date().toISOString(),
-      },
-      'All systems operational',
-    );
-  } catch (error) {
-    logger.error('Health check failed:', error);
-    return ApiResponse.error(res, 'Service partially degraded', 503, {
-      database: 'Disconnected',
-    });
+  if (status.status === 'degraded') {
+    return ApiResponse.error(res, 'Service partially degraded', 503, status);
   }
+
+  return ApiResponse.success(res, status, 'All systems operational');
 });
 
 export default router;

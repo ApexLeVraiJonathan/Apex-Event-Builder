@@ -4,27 +4,28 @@ import { ApiResponse } from '../utils/apiResponse.js';
 
 export const handleRegisterWebhook = async (req, res, next) => {
   const { correlationId } = req;
-  const { tournamentId, teamId } = req.params;
-  const webhookData = req.sanitizedBody;
+  const { tournamentId } = req.params;
+  const { teamName, webhookUrl } = req.body;
 
   try {
     logger.info({
       correlationId,
       message: 'Registering team webhook',
       tournamentId,
-      teamId,
+      teamName,
     });
 
     const webhook = await teamWebhookService.registerWebhook(
       tournamentId,
-      teamId,
-      webhookData,
+      teamName,
+      { webhookUrl },
     );
 
     logger.info({
       correlationId,
       message: 'Team webhook registered successfully',
       webhookId: webhook.id,
+      teamName,
     });
 
     return ApiResponse.created(res, { webhook });
@@ -33,6 +34,7 @@ export const handleRegisterWebhook = async (req, res, next) => {
       correlationId,
       message: 'Failed to register team webhook',
       error: error.message,
+      teamName,
     });
     next(error);
   }
@@ -40,19 +42,19 @@ export const handleRegisterWebhook = async (req, res, next) => {
 
 export const handleGetTeamWebhooks = async (req, res, next) => {
   const { correlationId } = req;
-  const { tournamentId, teamId } = req.params;
+  const { tournamentId, teamName } = req.params;
 
   try {
     logger.info({
       correlationId,
       message: 'Fetching team webhooks',
       tournamentId,
-      teamId,
+      teamName,
     });
 
     const webhooks = await teamWebhookService.getTeamWebhooks(
       tournamentId,
-      teamId,
+      teamName,
     );
 
     logger.info({
@@ -74,18 +76,18 @@ export const handleGetTeamWebhooks = async (req, res, next) => {
 
 export const handleDeleteWebhook = async (req, res, next) => {
   const { correlationId } = req;
-  const { tournamentId, teamId, webhookId } = req.params;
+  const { tournamentId, teamName, webhookId } = req.params;
 
   try {
     logger.info({
       correlationId,
       message: 'Deleting team webhook',
       tournamentId,
-      teamId,
+      teamName,
       webhookId,
     });
 
-    await teamWebhookService.deleteWebhook(tournamentId, teamId, webhookId);
+    await teamWebhookService.deleteWebhook(tournamentId, teamName, webhookId);
 
     logger.info({
       correlationId,

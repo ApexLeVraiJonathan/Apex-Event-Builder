@@ -7,12 +7,7 @@ import { RIOT_API_KEY, RIOT_TOURNAMENT_API_URL } from '../config/env.js';
 
 class TournamentProviderService extends BaseService {
   constructor() {
-    super();
-    this.containerName = 'tournamentProviders';
-  }
-
-  async init() {
-    await super.init(this.containerName);
+    super('tournamentProviders');
   }
 
   async createProvider(data) {

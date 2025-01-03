@@ -13,9 +13,9 @@ const router = express.Router();
 
 /**
  * @swagger
- * /tournaments/{tournamentId}/teams/{teamId}/webhooks:
+ * /team-webhooks/{tournamentId}:
  *   post:
- *     summary: Register a new webhook
+ *     summary: Register a Discord webhook for tournament notifications
  *     tags: [Webhooks]
  *     parameters:
  *       - in: path
@@ -23,11 +23,7 @@ const router = express.Router();
  *         required: true
  *         schema:
  *           type: string
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: string
+ *         description: The tournament ID
  *     requestBody:
  *       required: true
  *       content:
@@ -35,25 +31,29 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             required:
+ *               - teamName
  *               - webhookUrl
  *             properties:
+ *               teamName:
+ *                 type: string
+ *                 description: Team name that will be used in tournament codes
  *               webhookUrl:
  *                 type: string
  *                 format: uri
- *               secret:
- *                 type: string
- *               events:
- *                 type: array
- *                 items:
- *                   type: string
+ *                 pattern: ^https:\/\/discord\.com\/api\/webhooks\/.*
+ *                 description: Discord webhook URL
  *     responses:
  *       201:
  *         description: Webhook registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebhookResponse'
  *       400:
- *         $ref: '#/components/responses/Error'
+ *         $ref: '#/components/responses/BadRequest'
  */
 router.post(
-  '/:tournamentId/teams/:teamId/webhooks',
+  '/:tournamentId',
   defaultLimiter,
   validateRequest(registerWebhookSchema),
   handleRegisterWebhook,
@@ -61,7 +61,7 @@ router.post(
 
 /**
  * @swagger
- * /tournaments/{tournamentId}/teams/{teamId}/webhooks:
+ * /team-webhooks/{tournamentId}/{teamName}:
  *   get:
  *     summary: Get team webhooks
  *     tags: [Webhooks]
@@ -72,7 +72,7 @@ router.post(
  *         schema:
  *           type: string
  *       - in: path
- *         name: teamId
+ *         name: teamName
  *         required: true
  *         schema:
  *           type: string
@@ -81,7 +81,7 @@ router.post(
  *         description: List of webhooks
  */
 router.get(
-  '/:tournamentId/teams/:teamId/webhooks',
+  '/:tournamentId/:teamName',
   defaultLimiter,
   cacheMiddleware('webhooks'),
   handleGetTeamWebhooks,
@@ -89,7 +89,7 @@ router.get(
 
 /**
  * @swagger
- * /tournaments/{tournamentId}/teams/{teamId}/webhooks/{webhookId}:
+ * /team-webhooks/{tournamentId}/{teamName}/{webhookId}:
  *   delete:
  *     summary: Delete webhook
  *     tags: [Webhooks]
@@ -100,7 +100,7 @@ router.get(
  *         schema:
  *           type: string
  *       - in: path
- *         name: teamId
+ *         name: teamName
  *         required: true
  *         schema:
  *           type: string
@@ -116,7 +116,7 @@ router.get(
  *         $ref: '#/components/responses/Error'
  */
 router.delete(
-  '/:tournamentId/teams/:teamId/webhooks/:webhookId',
+  '/:tournamentId/:teamName/:webhookId',
   defaultLimiter,
   handleDeleteWebhook,
 );

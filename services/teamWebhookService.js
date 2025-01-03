@@ -2,50 +2,23 @@ import { BaseService } from './baseService.js';
 import logger from '../utils/logger.js';
 import { AppError } from '../utils/errors.js';
 import { clearCache } from '../middlewares/cache.js';
-import axios from 'axios';
+import axios from 'axios'; // Need axios for Discord webhook calls
 
 class TeamWebhookService extends BaseService {
   constructor() {
     super('teamWebhooks');
   }
 
-  async validateWebhookUrl(webhookUrl) {
-    try {
-      await axios.post(
-        webhookUrl,
-        {
-          type: 'ping',
-          message: 'Testing webhook connection',
-        },
-        {
-          timeout: 5000, // 5 second timeout
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    } catch (error) {
-      logger.error('Webhook validation failed:', error.message);
-      throw new AppError(
-        `Failed to validate webhook URL: ${error.message}`,
-        400,
-      );
-    }
-  }
-
-  async registerWebhook(tournamentId, teamId, webhookData) {
+  async registerWebhook(tournamentId, teamName, webhookData) {
     try {
       logger.info(
-        `Registering webhook for team ${teamId} in tournament: ${tournamentId}`,
+        `Registering webhook for team ${teamName} in tournament: ${tournamentId}`,
       );
-
-      // Validate webhook URL first
-      await this.validateWebhookUrl(webhookData.webhookUrl);
 
       const webhook = await this.create({
         tournamentId,
-        teamId,
-        ...webhookData,
+        teamName,
+        url: webhookData.webhookUrl,
         status: 'active',
         createdAt: new Date().toISOString(),
       });
@@ -59,18 +32,18 @@ class TeamWebhookService extends BaseService {
     }
   }
 
-  async getTeamWebhooks(tournamentId, teamId) {
+  async getTeamWebhooks(tournamentId, teamName) {
     try {
       logger.info(
-        `Fetching webhooks for team ${teamId} in tournament: ${tournamentId}`,
+        `Fetching webhooks for team ${teamName} in tournament: ${tournamentId}`,
       );
 
       const querySpec = {
         query:
-          'SELECT * FROM c WHERE c.tournamentId = @tournamentId AND c.teamId = @teamId',
+          'SELECT * FROM c WHERE c.tournamentId = @tournamentId AND c.teamName = @teamName',
         parameters: [
           { name: '@tournamentId', value: tournamentId },
-          { name: '@teamId', value: teamId },
+          { name: '@teamName', value: teamName },
         ],
       };
 
@@ -81,10 +54,70 @@ class TeamWebhookService extends BaseService {
     }
   }
 
-  async deleteWebhook(tournamentId, teamId, webhookId) {
+  async getWebhooksForTeams(tournamentId, teamNames) {
     try {
       logger.info(
-        `Deleting webhook ${webhookId} for team ${teamId} in tournament: ${tournamentId}`,
+        `Fetching webhooks for teams ${teamNames.join(', ')} in tournament: ${tournamentId}`,
+      );
+
+      const querySpec = {
+        query:
+          'SELECT * FROM c WHERE c.tournamentId = @tournamentId AND ARRAY_CONTAINS(@teamNames, c.teamName)',
+        parameters: [
+          { name: '@tournamentId', value: tournamentId },
+          { name: '@teamNames', value: teamNames },
+        ],
+      };
+
+      return await this.findMany(querySpec);
+    } catch (error) {
+      logger.error('Error fetching team webhooks:', error);
+      throw new AppError('Failed to fetch team webhooks', 500);
+    }
+  }
+
+  async sendTournamentCodesNotification(webhook, teams, codes) {
+    try {
+      const message = {
+        content: this.formatDiscordMessage(teams, codes),
+        embeds: [
+          {
+            title: 'Tournament Codes Generated',
+            color: 0x00ff00,
+            fields: codes.map((code, index) => ({
+              name: `Game ${index + 1}`,
+              value: `\`${code}\``,
+              inline: true,
+            })),
+          },
+        ],
+      };
+
+      await axios.post(webhook.url, message);
+      logger.info(
+        `Successfully sent webhook notification to team ${webhook.teamName}`,
+      );
+    } catch (error) {
+      logger.error(`Failed to send webhook notification: ${error.message}`);
+      throw new AppError('Failed to send webhook notification', 500);
+    }
+  }
+
+  formatDiscordMessage(teams, codes) {
+    const header = `Tournament codes for:\n${teams[0]} VS ${teams[1]}\n`;
+    const body = codes
+      .map((code, index) => `Game ${index + 1}: ${code}`)
+      .join('\n');
+    const footer =
+      '\n\nIf you have any issues with one of the codes, please contact an administrator.';
+
+    return `${header}\nUse the following tournament codes to join your lobby:\n${body}${footer}`;
+  }
+
+  async deleteWebhook(tournamentId, teamName, webhookId) {
+    try {
+      logger.info(
+        `Deleting webhook ${webhookId} for team ${teamName} in tournament: ${tournamentId}`,
       );
 
       const webhook = await this.findById(webhookId);
@@ -92,7 +125,10 @@ class TeamWebhookService extends BaseService {
         throw new AppError('Webhook not found', 404);
       }
 
-      if (webhook.tournamentId !== tournamentId || webhook.teamId !== teamId) {
+      if (
+        webhook.tournamentId !== tournamentId ||
+        webhook.teamName !== teamName
+      ) {
         throw new AppError(
           'Webhook does not belong to this team/tournament',
           403,
@@ -106,29 +142,6 @@ class TeamWebhookService extends BaseService {
       if (error instanceof AppError) throw error;
       logger.error('Error deleting webhook:', error);
       throw new AppError('Failed to delete webhook', 500);
-    }
-  }
-
-  async notifyWebhook(webhook, event, data) {
-    try {
-      logger.info(`Notifying webhook ${webhook.id} for event: ${event}`);
-
-      const payload = {
-        event,
-        timestamp: new Date().toISOString(),
-        data,
-      };
-
-      await axios.post(webhook.webhookUrl, payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 5000, // 5 second timeout
-      });
-
-      logger.info(`Successfully notified webhook ${webhook.id}`);
-      return true;
-    } catch (error) {
-      logger.error(`Failed to notify webhook ${webhook.id}:`, error);
-      return false;
     }
   }
 }

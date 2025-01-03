@@ -1,43 +1,22 @@
-import { body } from 'express-validator';
+import Joi from 'joi';
 
-export const registerWebhookSchema = [
-  body('webhookUrl')
-    .trim()
-    .notEmpty()
-    .withMessage('Webhook URL is required')
-    .isURL({
-      protocols: ['http', 'https'],
-      require_protocol: true,
-    })
-    .withMessage('Must be a valid HTTP/HTTPS URL'),
+export const registerWebhookSchema = Joi.object({
+  teamName: Joi.string().required().min(2).max(30).messages({
+    'any.required': 'Team name is required',
+    'string.empty': 'Team name cannot be empty',
+    'string.min': 'Team name must be at least 2 characters long',
+    'string.max': 'Team name cannot exceed 30 characters',
+  }),
 
-  body('secret')
-    .optional()
-    .isString()
-    .isLength({ min: 16, max: 64 })
-    .withMessage('Secret must be between 16 and 64 characters'),
-
-  body('events')
-    .optional()
-    .isArray()
-    .withMessage('Events must be an array')
-    .custom((value) => {
-      const validEvents = [
-        'game.created',
-        'game.started',
-        'game.completed',
-        'team.joined',
-        'team.left',
-      ];
-
-      if (!value.every((event) => validEvents.includes(event))) {
-        throw new Error('Contains invalid event types');
-      }
-      return true;
+  webhookUrl: Joi.string()
+    .required()
+    .pattern(
+      new RegExp('^https://discord.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+$'),
+    )
+    .messages({
+      'any.required': 'Webhook URL is required',
+      'string.empty': 'Webhook URL cannot be empty',
+      'string.pattern.base':
+        'Must be a valid Discord webhook URL (https://discord.com/api/webhooks/[ID]/[TOKEN])',
     }),
-
-  body('metadata')
-    .optional()
-    .isObject()
-    .withMessage('Metadata must be an object'),
-];
+}).required();

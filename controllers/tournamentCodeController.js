@@ -5,7 +5,8 @@ import logger from '../utils/logger.js';
 export const handleCreateTournamentCode = async (req, res, next) => {
   const { correlationId } = req;
   const { tournamentId } = req.params;
-  const { count = 1, ...codeData } = req.sanitizedBody;
+  const count = parseInt(req.query.count || '1', 10);
+  const codeData = req.body;
 
   try {
     logger.info({
@@ -29,7 +30,7 @@ export const handleCreateTournamentCode = async (req, res, next) => {
 
     return ApiResponse.success(
       res,
-      codes,
+      { codes },
       'Tournament codes created successfully',
       201,
     );
@@ -77,38 +78,38 @@ export const handleGetTournamentCodes = async (req, res, next) => {
   }
 };
 
-export const handleInvalidateCode = async (req, res, next) => {
+export const handleGetTournamentCode = async (req, res, next) => {
   const { correlationId } = req;
-  const { tournamentId, codeId } = req.params;
+  const { code } = req.params;
 
   try {
     logger.info({
       correlationId,
-      message: 'Invalidating tournament code',
-      tournamentId,
-      codeId,
+      message: 'Fetching tournament code',
+      code,
     });
 
-    const code = await tournamentCodeService.invalidateCode(
-      tournamentId,
-      codeId,
-    );
+    const tournamentCode = await tournamentCodeService.getCode(code);
+
+    if (!tournamentCode) {
+      return ApiResponse.error(res, 'Tournament code not found', 404);
+    }
 
     logger.info({
       correlationId,
-      message: 'Tournament code invalidated successfully',
-      codeId,
+      message: 'Tournament code fetched successfully',
+      code,
     });
 
     return ApiResponse.success(
       res,
-      code,
-      'Tournament code invalidated successfully',
+      tournamentCode,
+      'Tournament code retrieved successfully',
     );
   } catch (error) {
     logger.error({
       correlationId,
-      message: 'Failed to invalidate tournament code',
+      message: 'Failed to fetch tournament code',
       error: error.message,
     });
     next(error);

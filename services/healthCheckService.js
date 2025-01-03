@@ -1,4 +1,4 @@
-import { client as cosmosClient } from '../config/cosmos.js';
+import { checkDatabaseConnection } from '../config/cosmos.js';
 import logger from '../utils/logger.js';
 
 class HealthCheckService {
@@ -13,11 +13,11 @@ class HealthCheckService {
     const start = Date.now();
 
     try {
-      await cosmosClient.getDatabaseAccount();
+      const isConnected = await checkDatabaseConnection();
 
       return {
-        status: 'healthy',
-        database: 'connected',
+        status: isConnected ? 'healthy' : 'degraded',
+        database: isConnected ? 'connected' : 'disconnected',
         timestamp: new Date().toISOString(),
         responseTime: Date.now() - start,
       };

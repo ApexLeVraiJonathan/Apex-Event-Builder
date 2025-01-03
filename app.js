@@ -9,7 +9,6 @@ import { securityMiddleware } from './middlewares/security.js';
 import { sanitizeRequest } from './middlewares/sanitizer.js';
 import { IS_PRODUCTION } from './config/env.js';
 import { initializeDatabase } from './config/cosmos.js';
-import { tournamentService } from './services/tournamentService.js';
 
 // Import routes
 import tournamentProviderRoutes from './routes/tournamentProviderRoutes.js';
@@ -21,12 +20,11 @@ import healthCheckRoutes from './routes/healthCheckRoutes.js';
 
 const app = express();
 
-// Initialize database and services
+// Initialize database
 let initialized = false;
 const initialize = async () => {
   if (!initialized) {
-    await initializeDatabase();
-    await tournamentService.init();
+    await initializeDatabase(); // This is all we need
     initialized = true;
   }
 };

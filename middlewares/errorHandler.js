@@ -2,7 +2,7 @@ import logger from '../utils/logger.js';
 import { AppError } from '../utils/errors.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 
-export const errorHandler = (err, req, res) => {
+export const errorHandler = (err, req, res, _next) => {
   const correlationId = req.correlationId;
 
   // Log error with correlation ID

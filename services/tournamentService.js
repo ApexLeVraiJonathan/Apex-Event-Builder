@@ -6,12 +6,7 @@ import { AppError } from '../utils/errors.js';
 
 class TournamentService extends BaseService {
   constructor() {
-    super();
-    this.containerName = 'tournaments';
-  }
-
-  async init() {
-    await super.init(this.containerName);
+    super('tournaments');
   }
 
   // Create tournament in Riot's system
